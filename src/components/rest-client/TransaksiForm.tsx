@@ -86,7 +86,6 @@ export function TransaksiForm({ onSubmit, isLoading, response }: TransaksiFormPr
   useEffect(() => {
     // PRIORITAS TINGGI: Untuk Load Data request, selalu proses response terlebih dahulu
     if (isLoadDataRequestRef.current && response) {
-      const wasLoadDataRequest = true;
       lastResponseRef.current = response;
       lastResponseTimestampRef.current = response.time || Date.now();
       isLoadDataRequestRef.current = false;

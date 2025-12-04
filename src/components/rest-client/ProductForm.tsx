@@ -98,7 +98,6 @@ export function ProductForm({ onSubmit, isLoading, response }: ProductFormProps)
     // PRIORITAS TINGGI: Untuk Load Data request, selalu proses response terlebih dahulu
     // Jangan cek isNewResponse untuk Load Data karena kita ingin memastikan auto-fill terjadi
     if (isLoadDataRequestRef.current && response) {
-      const wasLoadDataRequest = true;
       lastResponseRef.current = response;
       lastResponseTimestampRef.current = response.time || Date.now();
       isLoadDataRequestRef.current = false;
