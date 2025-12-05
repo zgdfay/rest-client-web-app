@@ -1,54 +1,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { AlertCircle } from 'lucide-react';
 import type { ApiResponse } from '@/types';
 
 interface ResponseBodyProps {
   response: ApiResponse | null;
 }
-
-// Helper function untuk extract error message dari response
-const extractErrorMessage = (data: any): string | null => {
-  if (!data || typeof data !== 'object') {
-    return null;
-  }
-
-  // Cek berbagai format error message
-  if (data.error) {
-    return typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
-  }
-  if (data.message) {
-    return typeof data.message === 'string' ? data.message : JSON.stringify(data.message);
-  }
-  if (data.msg) {
-    return typeof data.msg === 'string' ? data.msg : JSON.stringify(data.msg);
-  }
-  if (data.errors && Array.isArray(data.errors)) {
-    return data.errors.join(', ');
-  }
-  if (data.errors && typeof data.errors === 'object') {
-    return JSON.stringify(data.errors);
-  }
-
-  return null;
-};
-
-// Helper function untuk cek apakah response adalah error
-const isErrorResponse = (data: any): boolean => {
-  if (!data || typeof data !== 'object') {
-    return false;
-  }
-
-  // Cek berbagai indikator error
-  if (data.error || data.message || data.msg || data.errors) {
-    return true;
-  }
-  if (data.status === 'error' || data.success === false) {
-    return true;
-  }
-
-  return false;
-};
 
 export function ResponseBody({ response }: ResponseBodyProps) {
   if (!response) {
