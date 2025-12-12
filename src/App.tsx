@@ -2,54 +2,10 @@ import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProductTable } from '@/components/rest-client/ProductTable';
 import { TransaksiTable } from '@/components/rest-client/TransaksiTable';
-import { HistoryPanel } from '@/components/rest-client/HistoryPanel';
 import { Toaster } from '@/components/ui/sonner';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
-import type { RequestConfig, ApiResponse, RequestHistory } from '@/types';
 
 function App() {
-  const [history, setHistory] = useLocalStorage<RequestHistory[]>(
-    'rest-client-history',
-    []
-  );
   const [activeTab, setActiveTab] = useState('tabel-produk');
-
-  const handleSelectHistory = (_historyItem: RequestHistory) => {
-    // Switch to history tab
-    setActiveTab('history');
-  };
-
-  const handleDeleteHistory = (id: string) => {
-    setHistory(history.filter((item) => item.id !== id));
-  };
-
-  const handleClearHistory = () => {
-    setHistory([]);
-  };
-
-  const handleAddHistory = (
-    config: RequestConfig,
-    apiResponse: ApiResponse
-  ) => {
-    // Save to history
-    let historyName = `${config.method} ${config.url}`;
-    try {
-      const urlObj = new URL(config.url);
-      historyName = `${config.method} ${urlObj.pathname}`;
-    } catch {
-      // Keep original name if URL parsing fails
-    }
-
-    const historyItem: RequestHistory = {
-      id: Date.now().toString(),
-      name: historyName,
-      config,
-      response: apiResponse,
-      timestamp: Date.now(),
-    };
-
-    setHistory([historyItem, ...history.slice(0, 49)]); // Keep last 50 items
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -86,29 +42,15 @@ function App() {
                 className="shrink-0 px-4 sm:px-8 py-2 rounded-md transition-colors data-[state=active]:!bg-blue-100 data-[state=active]:!text-blue-700 data-[state=active]:shadow-sm hover:bg-gray-50 whitespace-nowrap">
                 Tabel Transaksi
               </TabsTrigger>
-              <TabsTrigger
-                value="history"
-                className="flex-shrink-0 px-4 sm:px-8 py-2 rounded-md transition-colors data-[state=active]:!bg-blue-100 data-[state=active]:!text-blue-700 data-[state=active]:shadow-sm hover:bg-gray-50 whitespace-nowrap">
-                History
-              </TabsTrigger>
             </TabsList>
           </div>
 
           <TabsContent value="tabel-produk" className="mt-4 sm:mt-6">
-            <ProductTable onAddHistory={handleAddHistory} />
+            <ProductTable />
           </TabsContent>
 
           <TabsContent value="tabel-transaksi" className="mt-4 sm:mt-6">
-            <TransaksiTable onAddHistory={handleAddHistory} />
-          </TabsContent>
-
-          <TabsContent value="history" className="mt-4 sm:mt-6">
-            <HistoryPanel
-              history={history}
-              onSelect={handleSelectHistory}
-              onDelete={handleDeleteHistory}
-              onClear={handleClearHistory}
-            />
+            <TransaksiTable />
           </TabsContent>
         </Tabs>
       </div>

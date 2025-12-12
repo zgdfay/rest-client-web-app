@@ -30,7 +30,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import type { RequestConfig, ApiResponse } from '@/types';
+import type { RequestConfig } from '@/types';
 
 interface Product {
   id: string;
@@ -39,15 +39,14 @@ interface Product {
   harga: number | string;
   stok: number | string;
   deskripsi: string;
+  gambar?: Blob | string | null;
 }
 
 const BASE_URL =
   import.meta.env.VITE_API_PRODUK_URL ||
   'http://localhost/dbrest/api/produk.php';
 
-interface ProductTableProps {
-  onAddHistory?: (config: RequestConfig, response: ApiResponse) => void;
-}
+interface ProductTableProps {}
 
 const KATEGORI_OPTIONS = [
   'Mobile Legends: Bang Bang',
@@ -65,7 +64,7 @@ const KATEGORI_OPTIONS = [
   'Lainnya',
 ];
 
-export function ProductTable({ onAddHistory }: ProductTableProps = {}) {
+export function ProductTable({}: ProductTableProps = {}) {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -80,6 +79,7 @@ export function ProductTable({ onAddHistory }: ProductTableProps = {}) {
     harga: '',
     stok: '',
     deskripsi: '',
+    gambar: null as File | null,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -109,11 +109,6 @@ export function ProductTable({ onAddHistory }: ProductTableProps = {}) {
       };
 
       const response = await makeRequest(requestConfig);
-
-      // Add to history
-      if (onAddHistory) {
-        onAddHistory(requestConfig, response);
-      }
 
       if (response.status === 200 && response.data) {
         let data = response.data;
@@ -186,38 +181,90 @@ export function ProductTable({ onAddHistory }: ProductTableProps = {}) {
     return Object.keys(newErrors).length === 0;
   };
 
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (reader.result) {
+          const dataUrl = reader.result as string;
+          // Ekstrak hanya base64 string tanpa prefix data:image/...
+          const base64String = dataUrl.includes(',')
+            ? dataUrl.split(',')[1]
+            : dataUrl;
+          resolve(base64String);
+        } else {
+          reject(new Error('Failed to read file'));
+        }
+      };
+      reader.onerror = () => reject(new Error('Error reading file'));
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleCreate = async () => {
     if (!validateForm()) return;
 
     setIsLoading(true);
     try {
+      const bodyData: any = {
+        nama_produk: formData.nama_produk.trim(),
+        kategori: formData.kategori.trim(),
+        harga: Number(formData.harga.trim()),
+        stok: Number(formData.stok.trim()),
+        deskripsi: formData.deskripsi.trim(),
+      };
+
+      // Jika ada gambar, konversi ke base64
+      if (formData.gambar) {
+        try {
+          bodyData.gambar = await fileToBase64(formData.gambar);
+        } catch (error) {
+          console.error('Error converting image to base64:', error);
+          toast.error('Error', {
+            description: 'Gagal memproses gambar',
+          });
+          setIsLoading(false);
+          return;
+        }
+      }
+
       const requestConfig: RequestConfig = {
         url: BASE_URL,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nama_produk: formData.nama_produk.trim(),
-          kategori: formData.kategori.trim(),
-          harga: Number(formData.harga.trim()),
-          stok: Number(formData.stok.trim()),
-          deskripsi: formData.deskripsi.trim(),
-        }),
+        body: JSON.stringify(bodyData),
       };
+
+      console.log('Creating product with data:', {
+        ...bodyData,
+        gambar: bodyData.gambar
+          ? `${bodyData.gambar.substring(0, 50)}...`
+          : null,
+      });
 
       const response = await makeRequest(requestConfig);
 
-      // Add to history
-      if (onAddHistory) {
-        onAddHistory(requestConfig, response);
-      }
+      console.log('Response:', response);
 
-      if (response.status === 200 || response.status === 201) {
+      // Cek response status dan juga response.data.response untuk error dari backend
+      const isSuccess =
+        (response.status === 200 || response.status === 201) &&
+        response.data?.response !== 500 &&
+        response.data?.response !== 400;
+
+      if (isSuccess) {
         setIsDialogOpen(false);
         resetForm();
         loadProducts();
         toast.success('Produk berhasil ditambahkan');
       } else {
-        toast.error('Gagal menambahkan produk');
+        console.error('Failed to create product:', response);
+        toast.error('Gagal menambahkan produk', {
+          description:
+            response.data?.message ||
+            response.data?.error ||
+            'Terjadi kesalahan saat menambahkan produk',
+        });
       }
     } catch (error) {
       console.error('Error creating product:', error);
@@ -234,34 +281,99 @@ export function ProductTable({ onAddHistory }: ProductTableProps = {}) {
 
     setIsLoading(true);
     try {
+      const bodyData: any = {
+        nama_produk: formData.nama_produk.trim(),
+        kategori: formData.kategori.trim(),
+        harga: Number(formData.harga.trim()),
+        stok: Number(formData.stok.trim()),
+        deskripsi: formData.deskripsi.trim(),
+      };
+
+      // Jika ada gambar baru, konversi ke base64 (tanpa prefix)
+      if (formData.gambar) {
+        try {
+          bodyData.gambar = await fileToBase64(formData.gambar);
+        } catch (error) {
+          console.error('Error converting image to base64:', error);
+          toast.error('Error', {
+            description: 'Gagal memproses gambar',
+          });
+          setIsLoading(false);
+          return;
+        }
+      } else if (editingProduct.gambar) {
+        // Jika tidak ada gambar baru, kirim gambar lama untuk mempertahankannya
+        // Backend PHP akan set gambar ke null jika field tidak dikirim
+        // Backend mengirim gambar sebagai base64 string (sudah di-encode dengan base64_encode)
+        // Kita kirim kembali base64 string tersebut, backend akan decode ke blob dengan base64_decode
+        if (typeof editingProduct.gambar === 'string') {
+          // Pastikan hanya base64 string tanpa prefix data:image/...
+          let base64String = editingProduct.gambar.includes(',')
+            ? editingProduct.gambar.split(',')[1]
+            : editingProduct.gambar;
+
+          // Validasi: pastikan string base64 valid (hanya karakter base64)
+          // Base64 hanya mengandung A-Z, a-z, 0-9, +, /, dan = untuk padding
+          if (/^[A-Za-z0-9+/]*={0,2}$/.test(base64String)) {
+            bodyData.gambar = base64String;
+          } else {
+            console.warn('Gambar lama tidak valid base64, akan diabaikan');
+          }
+        }
+      }
+
       const requestConfig = {
         url: `${BASE_URL}?id=${encodeURIComponent(editingProduct.id)}`,
         method: 'PUT' as const,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nama_produk: formData.nama_produk.trim(),
-          kategori: formData.kategori.trim(),
-          harga: Number(formData.harga.trim()),
-          stok: Number(formData.stok.trim()),
-          deskripsi: formData.deskripsi.trim(),
-        }),
+        body: JSON.stringify(bodyData),
       };
+
+      console.log('Updating product with data:', {
+        ...bodyData,
+        gambar: bodyData.gambar
+          ? typeof bodyData.gambar === 'string'
+            ? `${bodyData.gambar.substring(0, 50)}... (length: ${
+                bodyData.gambar.length
+              })`
+            : '[Blob/Object]'
+          : null,
+      });
+
+      // Log untuk debugging: cek apakah base64 valid
+      if (bodyData.gambar && typeof bodyData.gambar === 'string') {
+        console.log('Gambar base64 preview:', {
+          first50: bodyData.gambar.substring(0, 50),
+          last50: bodyData.gambar.substring(bodyData.gambar.length - 50),
+          length: bodyData.gambar.length,
+          isValidBase64: /^[A-Za-z0-9+/]*={0,2}$/.test(bodyData.gambar),
+        });
+      }
 
       const response = await makeRequest(requestConfig);
 
-      // Add to history
-      if (onAddHistory) {
-        onAddHistory(requestConfig, response);
-      }
+      console.log('Update response:', response);
 
-      if (response.status === 200) {
+      // Cek response status dan juga response.data.response untuk error dari backend
+      const isSuccess =
+        response.status === 200 &&
+        response.data?.response !== 500 &&
+        response.data?.response !== 400;
+
+      if (isSuccess) {
         setIsDialogOpen(false);
         setEditingProduct(null);
         resetForm();
         loadProducts();
         toast.success('Produk berhasil diupdate');
       } else {
-        toast.error('Gagal mengupdate produk');
+        console.error('Failed to update product:', response);
+        toast.error('Gagal mengupdate produk', {
+          description:
+            response.data?.message ||
+            response.data?.error ||
+            'Terjadi kesalahan saat mengupdate produk',
+        });
       }
     } catch (error) {
       console.error('Error updating product:', error);
@@ -285,11 +397,6 @@ export function ProductTable({ onAddHistory }: ProductTableProps = {}) {
       };
 
       const response = await makeRequest(requestConfig);
-
-      // Add to history
-      if (onAddHistory) {
-        onAddHistory(requestConfig, response);
-      }
 
       if (response.status === 200) {
         setIsDeleteDialogOpen(false);
@@ -323,6 +430,7 @@ export function ProductTable({ onAddHistory }: ProductTableProps = {}) {
       harga: String(product.harga || ''),
       stok: String(product.stok || ''),
       deskripsi: String(product.deskripsi || ''),
+      gambar: null,
     });
     setErrors({});
     setIsDialogOpen(true);
@@ -340,6 +448,7 @@ export function ProductTable({ onAddHistory }: ProductTableProps = {}) {
       harga: '',
       stok: '',
       deskripsi: '',
+      gambar: null,
     });
     setErrors({});
   };
@@ -408,6 +517,9 @@ export function ProductTable({ onAddHistory }: ProductTableProps = {}) {
                     <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">
                       ID
                     </th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">
+                      Gambar
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
                       Nama Produk
                     </th>
@@ -435,6 +547,32 @@ export function ProductTable({ onAddHistory }: ProductTableProps = {}) {
                       className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm text-gray-900 text-center">
                         {product.id}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {product.gambar ? (
+                          <div className="flex justify-center">
+                            <img
+                              src={
+                                typeof product.gambar === 'string'
+                                  ? product.gambar.startsWith('data:')
+                                    ? product.gambar
+                                    : `data:image/jpeg;base64,${product.gambar}`
+                                  : URL.createObjectURL(
+                                      new Blob([product.gambar])
+                                    )
+                              }
+                              alt={product.nama_produk}
+                              className="h-12 w-12 object-cover rounded border border-gray-200"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400">
+                            Tidak ada gambar
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900">
                         {product.nama_produk}
@@ -568,7 +706,11 @@ export function ProductTable({ onAddHistory }: ProductTableProps = {}) {
           isLoading={isLoading}
           editingProduct={editingProduct}
           onFormDataChange={(field, value) => {
-            setFormData({ ...formData, [field]: value });
+            if (field === 'gambar') {
+              setFormData({ ...formData, [field]: value as File | null });
+            } else {
+              setFormData({ ...formData, [field]: value as string });
+            }
             if (errors[field]) {
               setErrors({ ...errors, [field]: '' });
             }

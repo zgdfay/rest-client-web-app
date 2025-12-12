@@ -45,6 +45,7 @@ interface Product {
   harga: number | string;
   stok: number | string;
   deskripsi: string;
+  gambar?: Blob | string | null;
 }
 
 interface TransaksiFormModalProps {
@@ -100,6 +101,28 @@ export function TransaksiFormModal({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [totalHarga, open, formData.product_id, formData.qty]);
+
+  // Validasi real-time untuk disable tombol submit
+  const isFormValid = (): boolean => {
+    const productId = formData.product_id.trim();
+    const qty = formData.qty.trim();
+
+    // Validasi product_id: harus dipilih dan valid
+    const isProductIdValid =
+      productId !== '' &&
+      !isNaN(Number(productId)) &&
+      Number(productId) >= 0 &&
+      products.length > 0 &&
+      products.some((p) => String(p.id) === productId);
+
+    // Validasi qty: harus diisi, angka, dan > 0 (quantity harus lebih dari 0)
+    const isQtyValid =
+      qty !== '' &&
+      !isNaN(Number(qty)) &&
+      Number(qty) > 0;
+
+    return isProductIdValid && isQtyValid;
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -202,8 +225,8 @@ export function TransaksiFormModal({
           </Button>
           <Button
             onClick={onSubmit}
-            disabled={isLoading}
-            className="bg-blue-600 text-white hover:bg-blue-700">
+            disabled={isLoading || !isFormValid()}
+            className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
             {isLoading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />

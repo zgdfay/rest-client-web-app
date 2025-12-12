@@ -37,6 +37,7 @@ interface ProductFormData {
   harga: string;
   stok: string;
   deskripsi: string;
+  gambar?: File | null;
 }
 
 interface ProductFormErrors {
@@ -54,6 +55,7 @@ interface Product {
   harga: number | string;
   stok: number | string;
   deskripsi: string;
+  gambar?: Blob | string | null;
 }
 
 interface ProductFormModalProps {
@@ -63,7 +65,7 @@ interface ProductFormModalProps {
   errors: ProductFormErrors;
   isLoading: boolean;
   editingProduct: Product | null;
-  onFormDataChange: (field: keyof ProductFormData, value: string) => void;
+  onFormDataChange: (field: keyof ProductFormData, value: string | File | null) => void;
   onSubmit: () => void;
   onCancel: () => void;
 }
@@ -79,6 +81,47 @@ export function ProductFormModal({
   onSubmit,
   onCancel,
 }: ProductFormModalProps) {
+  // Validasi real-time untuk disable tombol submit
+  const isFormValid = (): boolean => {
+    const namaProduk = formData.nama_produk.trim();
+    const kategori = formData.kategori.trim();
+    const harga = formData.harga.trim();
+    const stok = formData.stok.trim();
+    const deskripsi = formData.deskripsi.trim();
+
+    // Validasi nama produk: harus diisi dan bukan hanya angka
+    const isNamaProdukValid =
+      namaProduk !== '' &&
+      (isNaN(Number(namaProduk)) || namaProduk === '' || Number(namaProduk).toString() !== namaProduk);
+
+    // Validasi kategori: harus diisi dan ada di daftar
+    const isKategoriValid =
+      kategori !== '' && KATEGORI_OPTIONS.includes(kategori);
+
+    // Validasi harga: harus diisi, angka, dan >= 0
+    const isHargaValid =
+      harga !== '' &&
+      !isNaN(Number(harga)) &&
+      Number(harga) >= 0;
+
+    // Validasi stok: harus diisi, angka, dan >= 0
+    const isStokValid =
+      stok !== '' &&
+      !isNaN(Number(stok)) &&
+      Number(stok) >= 0;
+
+    // Validasi deskripsi: harus diisi
+    const isDeskripsiValid = deskripsi !== '';
+
+    return (
+      isNamaProdukValid &&
+      isKategoriValid &&
+      isHargaValid &&
+      isStokValid &&
+      isDeskripsiValid
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white">
@@ -183,6 +226,33 @@ export function ProductFormModal({
               <p className="text-xs text-red-600">{errors.deskripsi}</p>
             )}
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="gambar">Gambar</Label>
+            <Input
+              id="gambar"
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0] || null;
+                onFormDataChange('gambar', file);
+              }}
+              className="cursor-pointer"
+            />
+            {formData.gambar && (
+              <p className="text-xs text-gray-500">
+                File dipilih: {formData.gambar.name}
+              </p>
+            )}
+            {editingProduct && !formData.gambar && editingProduct.gambar && (
+              <p className="text-xs text-gray-500">
+                Gambar saat ini tersedia
+              </p>
+            )}
+            {errors.gambar && (
+              <p className="text-xs text-red-600">{errors.gambar}</p>
+            )}
+          </div>
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onCancel} disabled={isLoading}>
@@ -190,8 +260,8 @@ export function ProductFormModal({
           </Button>
           <Button
             onClick={onSubmit}
-            disabled={isLoading}
-            className="bg-blue-600 text-white hover:bg-blue-700">
+            disabled={isLoading || !isFormValid()}
+            className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
             {isLoading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />

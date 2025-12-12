@@ -37,7 +37,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import type { RequestConfig, ApiResponse } from '@/types';
+import type { RequestConfig } from '@/types';
 
 interface Transaksi {
   id: string;
@@ -56,9 +56,7 @@ const PRODUCT_BASE_URL =
   import.meta.env.VITE_API_PRODUK_URL ||
   'http://localhost/dbrest/api/produk.php';
 
-interface TransaksiTableProps {
-  onAddHistory?: (config: RequestConfig, response: ApiResponse) => void;
-}
+interface TransaksiTableProps {}
 
 interface Product {
   id: string;
@@ -67,9 +65,10 @@ interface Product {
   harga: number | string;
   stok: number | string;
   deskripsi: string;
+  gambar?: Blob | string | null;
 }
 
-export function TransaksiTable({ onAddHistory }: TransaksiTableProps = {}) {
+export function TransaksiTable({}: TransaksiTableProps = {}) {
   const [transaksis, setTransaksis] = useState<Transaksi[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -191,10 +190,6 @@ export function TransaksiTable({ onAddHistory }: TransaksiTableProps = {}) {
 
       const response = await makeRequest(requestConfig);
 
-      // Add to history
-      if (onAddHistory) {
-        onAddHistory(requestConfig, response);
-      }
 
       if (response.status === 200 && response.data) {
         let data = response.data;
@@ -281,10 +276,6 @@ export function TransaksiTable({ onAddHistory }: TransaksiTableProps = {}) {
 
       const response = await makeRequest(requestConfig);
 
-      // Add to history
-      if (onAddHistory) {
-        onAddHistory(requestConfig, response);
-      }
 
       if (response.status === 200 || response.status === 201) {
         // Kurangi stok produk setelah transaksi berhasil dibuat
@@ -325,6 +316,7 @@ export function TransaksiTable({ onAddHistory }: TransaksiTableProps = {}) {
                   harga: Number(product.harga),
                   stok: newStok,
                   deskripsi: product.deskripsi,
+                  gambar: product.gambar || null,
                 }),
               };
 
@@ -379,10 +371,6 @@ export function TransaksiTable({ onAddHistory }: TransaksiTableProps = {}) {
 
       const response = await makeRequest(requestConfig);
 
-      // Add to history
-      if (onAddHistory) {
-        onAddHistory(requestConfig, response);
-      }
 
       if (response.status === 200) {
         // Update stok produk setelah transaksi diupdate
@@ -427,16 +415,13 @@ export function TransaksiTable({ onAddHistory }: TransaksiTableProps = {}) {
                     kategori: product.kategori,
                     harga: Number(product.harga),
                     stok: newStok,
-                    deskripsi: product.deskripsi,
-                  }),
+                  deskripsi: product.deskripsi,
+                  gambar: product.gambar || null,
+                }),
                 };
 
                 const updateResponse = await makeRequest(updateProductConfig);
 
-                // Add to history
-                if (onAddHistory) {
-                  onAddHistory(updateProductConfig, updateResponse);
-                }
 
                 if (updateResponse.status === 200) {
                   // Toast stok akan digabung dengan toast transaksi
@@ -480,10 +465,6 @@ export function TransaksiTable({ onAddHistory }: TransaksiTableProps = {}) {
 
       const response = await makeRequest(requestConfig);
 
-      // Add to history
-      if (onAddHistory) {
-        onAddHistory(requestConfig, response);
-      }
 
       if (response.status === 200) {
         // Kembalikan stok produk setelah transaksi dihapus
@@ -530,16 +511,13 @@ export function TransaksiTable({ onAddHistory }: TransaksiTableProps = {}) {
                     kategori: product.kategori,
                     harga: Number(product.harga),
                     stok: newStok,
-                    deskripsi: product.deskripsi,
-                  }),
+                  deskripsi: product.deskripsi,
+                  gambar: product.gambar || null,
+                }),
                 };
 
                 const updateResponse = await makeRequest(updateProductConfig);
 
-                // Add to history
-                if (onAddHistory) {
-                  onAddHistory(updateProductConfig, updateResponse);
-                }
               }
             }
           }
