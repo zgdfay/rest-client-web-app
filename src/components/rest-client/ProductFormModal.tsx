@@ -46,6 +46,7 @@ interface ProductFormErrors {
   harga?: string;
   stok?: string;
   deskripsi?: string;
+  gambar?: string;
 }
 
 interface Product {

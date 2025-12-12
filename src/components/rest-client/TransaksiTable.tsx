@@ -322,11 +322,6 @@ export function TransaksiTable({}: TransaksiTableProps = {}) {
 
               const updateResponse = await makeRequest(updateProductConfig);
 
-              // Add to history
-              if (onAddHistory) {
-                onAddHistory(updateProductConfig, updateResponse);
-              }
-
               if (updateResponse.status === 200) {
                 // Toast stok akan digabung dengan toast transaksi
               }
@@ -516,8 +511,7 @@ export function TransaksiTable({}: TransaksiTableProps = {}) {
                 }),
                 };
 
-                const updateResponse = await makeRequest(updateProductConfig);
-
+                await makeRequest(updateProductConfig);
               }
             }
           }
